@@ -4,6 +4,8 @@ use Illuminate\Validation\Validator;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Translation\TranslatorInterface;
 use Illuminate\Contracts\Validation\Validator as ValidatorContract;
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 
 
 class ImageValidator extends Validator implements ValidatorContract
@@ -102,7 +104,7 @@ class ImageValidator extends Validator implements ValidatorContract
 		$image_size = @getimagesize( $image );
 		if ($image_size===false) return false;
 
-		$image_aspect = bcdiv($image_size[0], $image_size[1], 12);
+		$image_aspect = (string) BigDecimal::of($image_size[0])->dividedBy($image_size[1], 12, RoundingMode::HALF_UP);
 
 
 		// Parse the parameter(s).  Options are:
@@ -135,17 +137,17 @@ class ImageValidator extends Validator implements ValidatorContract
 			{
 				throw new \RuntimeException('Aspect is zero or infinite: ' . $parameters[0] );
 			}
-			$aspect = bcdiv($width, $height, 12);
+			$aspect = (string) BigDecimal::of($width)->dividedBy($height, 12, RoundingMode::HALF_UP);
 		}
 
-		if ( bccomp($aspect, $image_aspect, 10) == 0 )
+		if ( BigDecimal::of($aspect)->toScale(10)->isEqualTo(BigDecimal::of($image_aspect)->toScale(10)) )
 		{
 			return true;
 		}
 
 		if ( $both_orientations ) {
-			$inverse = bcdiv(1, $aspect, 12);
-			if ( bccomp($inverse, $image_aspect, 10)==0 )
+			$inverse = (string) BigDecimal::of('1')->dividedBy($aspect, 12, RoundingMode::HALF_UP);
+			if ( BigDecimal::of($inverse)->toScale(10)->isEqualTo(BigDecimal::of($image_aspect)->toScale(10)) )
 			{
 				return true;
 			}
